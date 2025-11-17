@@ -6,35 +6,61 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		557969E22EB74B49002963DA /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 557969E12EB74B49002963DA /* OpenGL.framework */; };
+		557969EC2EB74CC1002963DA /* libglfw.3.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 557969EA2EB74CC1002963DA /* libglfw.3.4.dylib */; };
+		557969ED2EB74CC1002963DA /* libglfw.3.4.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 557969EA2EB74CC1002963DA /* libglfw.3.4.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		557969EE2EB74CC1002963DA /* libGLEW.2.2.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 557969EB2EB74CC1002963DA /* libGLEW.2.2.0.dylib */; };
+		557969EF2EB74CC1002963DA /* libGLEW.2.2.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 557969EB2EB74CC1002963DA /* libGLEW.2.2.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		557F889B2EC9B02B00DE4978 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 557F88982EC9B02A00DE4978 /* main.cpp */; };
+		557F889C2EC9B10200DE4978 /* vs.vert in CopyFiles */ = {isa = PBXBuildFile; fileRef = 557F88992EC9B02A00DE4978 /* vs.vert */; };
+		557F889D2EC9B10200DE4978 /* fs.frag in CopyFiles */ = {isa = PBXBuildFile; fileRef = 557F88972EC9B02A00DE4978 /* fs.frag */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		557969C32EB74B13002963DA /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 16;
 			files = (
+				557F889C2EC9B10200DE4978 /* vs.vert in CopyFiles */,
+				557F889D2EC9B10200DE4978 /* fs.frag in CopyFiles */,
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		557969E02EB74B41002963DA /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				557969ED2EB74CC1002963DA /* libglfw.3.4.dylib in Embed Libraries */,
+				557969EF2EB74CC1002963DA /* libGLEW.2.2.0.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		557969C52EB74B13002963DA /* SpacetimeConstraints */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = SpacetimeConstraints; sourceTree = BUILT_PRODUCTS_DIR; };
+		557969E12EB74B49002963DA /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		557969EA2EB74CC1002963DA /* libglfw.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.4.dylib; path = ../../../YGL/lib/libglfw.3.4.dylib; sourceTree = "<group>"; };
+		557969EB2EB74CC1002963DA /* libGLEW.2.2.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libGLEW.2.2.0.dylib; path = ../../../YGL/lib/libGLEW.2.2.0.dylib; sourceTree = "<group>"; };
+		557F88972EC9B02A00DE4978 /* fs.frag */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = fs.frag; sourceTree = "<group>"; };
+		557F88982EC9B02A00DE4978 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		557F88992EC9B02A00DE4978 /* vs.vert */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = vs.vert; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		557969C72EB74B13002963DA /* SpacetimeConstraints */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SpacetimeConstraints;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		557969C22EB74B13002963DA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				557969E22EB74B49002963DA /* OpenGL.framework in Frameworks */,
+				557969EE2EB74CC1002963DA /* libGLEW.2.2.0.dylib in Frameworks */,
+				557969EC2EB74CC1002963DA /* libglfw.3.4.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,7 +70,8 @@
 		557969BC2EB74B13002963DA = {
 			isa = PBXGroup;
 			children = (
-				557969C72EB74B13002963DA /* SpacetimeConstraints */,
+				557F889A2EC9B02A00DE4978 /* SpacetimeConstraints */,
+				557969D92EB74B41002963DA /* Frameworks */,
 				557969C62EB74B13002963DA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -57,6 +84,26 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		557969D92EB74B41002963DA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				557969EB2EB74CC1002963DA /* libGLEW.2.2.0.dylib */,
+				557969EA2EB74CC1002963DA /* libglfw.3.4.dylib */,
+				557969E12EB74B49002963DA /* OpenGL.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		557F889A2EC9B02A00DE4978 /* SpacetimeConstraints */ = {
+			isa = PBXGroup;
+			children = (
+				557F88992EC9B02A00DE4978 /* vs.vert */,
+				557F88972EC9B02A00DE4978 /* fs.frag */,
+				557F88982EC9B02A00DE4978 /* main.cpp */,
+			);
+			path = SpacetimeConstraints;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -67,13 +114,11 @@
 				557969C12EB74B13002963DA /* Sources */,
 				557969C22EB74B13002963DA /* Frameworks */,
 				557969C32EB74B13002963DA /* CopyFiles */,
+				557969E02EB74B41002963DA /* Embed Libraries */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				557969C72EB74B13002963DA /* SpacetimeConstraints */,
 			);
 			name = SpacetimeConstraints;
 			packageProductDependencies = (
@@ -120,6 +165,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				557F889B2EC9B02B00DE4978 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +295,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 488U7L9D53;
 				ENABLE_HARDENED_RUNTIME = YES;
+				HEADER_SEARCH_PATHS = (
+					/Users/gyu/Desktop/YGL/include,
+					/usr/local/include/eigen3,
+				);
+				LIBRARY_SEARCH_PATHS = /Users/gyu/Desktop/YGL/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -259,6 +310,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 488U7L9D53;
 				ENABLE_HARDENED_RUNTIME = YES;
+				HEADER_SEARCH_PATHS = (
+					/Users/gyu/Desktop/YGL/include,
+					/usr/local/include/eigen3,
+				);
+				LIBRARY_SEARCH_PATHS = /Users/gyu/Desktop/YGL/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
