@@ -39,20 +39,19 @@ const float g = -9.8f;
 //    Animating Point Structure
 //***********************************
 
-struct ObjectFraming {
+struct KeyFrameAnimObj {
     float animatingTime; // 1 cycle time
     int numFrame; // total frame = position.size() / 3
     vector<float> position; // vector of 3d vectors
     vector<float> velocity; // vector of 3d vectors
     GLuint vao = -1, posvbo[2], velvbo[2];
     int animatingFrame = -1;
-    static ObjectFraming create(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) { return ObjectFraming(animatingTime_, position_, velocity_); }
+    static KeyFrameAnimObj* create(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) { return new KeyFrameAnimObj(animatingTime_, position_, velocity_); }
     
-    ObjectFraming() {}
-    ObjectFraming(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) : animatingTime(animatingTime_), position(position_), velocity(velocity_) {
+    KeyFrameAnimObj(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) : animatingTime(animatingTime_), position(position_), velocity(velocity_) {
         numFrame = int(position_.size()) / 3;
         
-        cout << "--- Key Frame Object Animation ---" << endl;
+        cout << "--- Key Frame Animation Object ---" << endl;
         cout << "animating Time: " << animatingTime << endl;
         cout << "numFrame:       " << numFrame << endl;
         
@@ -122,8 +121,12 @@ struct ObjectFraming {
         
         glDrawArrays(GL_POINTS, 0, 1);
     }
+    
+    void debugRender() {
+        
+    }
 };
-ObjectFraming obj;
+KeyFrameAnimObj *obj;
 
 //******************************
 //   Linear System Variables
@@ -369,21 +372,6 @@ void SQP(bool useKKT = false) {
     
 }
 
-// Sequential Quadratic Programming
-//VectorXf SQP() {
-//    cg.compute(dRdS2.block(n, n, n, n));
-//    VectorXf S_hat = VectorXf::Zero(dRdS.rows());
-//    S_hat.segment<n>(n) += cg.solve(-dRdS.segment<n>(n));
-//    cout << "  #iterations:     " << cg.iterations() << endl;
-//    cout << "  estimated error: " << cg.error()      << endl;
-//    lscg.compute(dCdS);
-//    VectorXf C_modified = -C - dCdS*S_hat;
-//    VectorXf S_tilde = lscg.solve(C_modified);
-//    cout << "  #iterations:     " << lscg.iterations() << endl;
-//    cout << "  estimated error: " << lscg.error()      << endl;
-//    return S_hat+S_tilde;
-//}
-
 bool renderLoop = false;
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if(key == GLFW_KEY_0 && action == GLFW_PRESS) {
@@ -418,7 +406,7 @@ void init() {
         cout << v << ", ";
     }
     cout << endl;
-    obj = ObjectFraming::create(T, pos, vel);
+    obj = KeyFrameAnimObj::create(T, pos, vel);
     
     glfwSetKeyCallback(window->getGLFWWindow(), keyCallback);
 }
@@ -429,7 +417,7 @@ void render() {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
     t = glfwGetTime();
-    obj.render(t, renderLoop);
+    obj->render(t, renderLoop);
 }
 
 int main(int argc, const char * argv[]) {
