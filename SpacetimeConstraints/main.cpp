@@ -24,7 +24,7 @@ using namespace Eigen;
 //******************************
 
 // Time binning
-const float T = 3;
+const float T = 5.f;
 const int N = 5;
 const float h = T/N;
 // mass(kg)
@@ -33,7 +33,7 @@ const int m = 1;
 Vector3f a(-0.5f, -0.5f, 0), b(0.5f, 0.5f, 0);
 
 // gravity acceleration
-const float g = 9.8;
+const float g = -9.8f;
 
 //***********************************
 //    Animating Point Structure
@@ -51,7 +51,12 @@ struct ObjectFraming {
     ObjectFraming() {}
     ObjectFraming(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) : animatingTime(animatingTime_), position(position_), velocity(velocity_) {
         numFrame = int(position_.size()) / 3;
-        cout << "numFrame: " << numFrame << endl;
+        
+        cout << "--- Key Frame Object Animation ---" << endl;
+        cout << "animating Time: " << animatingTime << endl;
+        cout << "numFrame:       " << numFrame << endl;
+        
+        cout << "----------------------------------" << endl;
     }
     void render(const float& t, bool loop = true) {
         int currFrame, nextFrame;
@@ -219,7 +224,7 @@ void construct_dRdS() {
     
     // dRdx = 0?
     // dRdf = 2hf_i
-    dRdS.segment<n>(n) = S.segment<n>(n)*2;
+    dRdS.segment<n>(n) = S.segment<n>(n)*2*h;
     
     cout << "dRdS(" <<  dRdS.rows() << ", " << dRdS.cols() << ")" << endl;
 }
@@ -233,7 +238,7 @@ TriList construct_dRdS2() {
     // d(R)/(d(f)d(f)) = 2h
 //    float h2 = 2*h;
     for(int i = n; i < 2*n; i += 3) {
-        put33DiagToTriList(triplets, i, i, 2);
+        put33DiagToTriList(triplets, i, i, 2*h);
     }
     
     dRdS2.setFromTriplets(triplets.begin(), triplets.end());
@@ -243,64 +248,141 @@ TriList construct_dRdS2() {
     return triplets;
 }
 
-//SparseMatrix<float> KKT(0, 0);
-//VectorXf KKT_b(0);
-//VectorXf l;
+SparseMatrix<float> KKT(0, 0);
+VectorXf KKT_b(0);
+VectorXf l;
 // SQP solves the linear system of [H J^T \\ J 0][ds \\ dl] = [dRdS+J^Tl \\ C]
-//void construct_KKTLinearized() {
-//    construct_C();
-//    construct_dRdS();
-//    auto H_tri = construct_dRdS2();
-//    auto J_tri = construct_dCdS();
-//    KKT = SparseMatrix<float>(dRdS2.rows() + dCdS.rows(), dRdS2.cols() + dCdS.rows());
-//    
-//    TriList triplets;
-//    
-//    // H
-//    triplets.insert(triplets.end(), H_tri.begin(), H_tri.end());
-//    
-//    // J^T
-//    for(const auto& j : J_tri) triplets.emplace_back(j.col(), j.row()+dRdS2.cols(), j.value());
-//    
-//    // J
-//    for(const auto& j : J_tri) triplets.emplace_back(j.row()+dRdS2.rows(), j.col(), j.value());
-//    
-//    KKT.setFromTriplets(triplets.begin(), triplets.end());
-//    
-//    cout << "KKT(" <<  KKT.rows() << ", " << KKT.cols() << ")" << endl;
-////    cout << KKT << endl;
-//    
-//    if(KKT_b.rows() == 0) l = VectorXf::Zero(dCdS.rows());/*l = KKT_b.segment(dRdS2.cols(), dCdS.rows());*/
-//    
-//    KKT_b = VectorXf(dRdS2.cols() + dCdS.rows());
-//    KKT_b.segment(0, dRdS2.cols()) = -dRdS - dCdS.transpose()*l;
-//    KKT_b.segment(dRdS2.cols(), dCdS.rows()) = -C;
-//}
+void construct_KKTLinearized() {
+    construct_C();
+    construct_dRdS();
+    auto H_tri = construct_dRdS2();
+    auto J_tri = construct_dCdS();
+    KKT = SparseMatrix<float>(dRdS2.rows() + dCdS.rows(), dRdS2.cols() + dCdS.rows());
+    
+    TriList triplets;
+    triplets.reserve(H_tri.size() + 2*J_tri.size());
+    
+    // H
+    triplets.insert(triplets.end(), H_tri.begin(), H_tri.end());
+    
+    // J^T
+    for(const auto& j : J_tri) triplets.emplace_back(j.col(), j.row()+dRdS2.cols(), j.value());
+    
+    // J
+    for(const auto& j : J_tri) triplets.emplace_back(j.row()+dRdS2.rows(), j.col(), j.value());
+    
+    KKT.setFromTriplets(triplets.begin(), triplets.end());
+    
+    cout << "KKT(" <<  KKT.rows() << ", " << KKT.cols() << ")" << endl;
+//    cout << KKT << endl;
+    
+    if(KKT_b.rows() == 0) l = VectorXf::Zero(dCdS.rows());/*l = KKT_b.segment(dRdS2.cols(), dCdS.rows());*/
+    
+    KKT_b = VectorXf(dRdS2.cols() + dCdS.rows());
+    KKT_b.segment(0, dRdS2.cols()) = -dRdS - dCdS.transpose()*l;
+    KKT_b.segment(dRdS2.cols(), dCdS.rows()) = -C;
+}
+
+// Sequential Quadratic Programming
+void SQP(bool useKKT = false) {
+    // Zero Starting S
+    S = VectorXf::Zero(2*n);
+    
+    VectorXf prevS;
+    float tolerance = 1e-4, prevCond = numeric_limits<float>::max();
+    int cnt = 0, maxCnt = 100;
+    while(++cnt < maxCnt) { // small enough C or iterated enough, stop iteration
+        cout << cnt << "-th iteration:" << endl;
+        
+        
+        VectorXf deltaS;
+        if(!useKKT) {
+            // Construct system //
+            construct_C();
+            {
+                // end condition should be checked after constructing C
+                cout << "  C norm: " << C.norm() << endl;
+                float cond = C.norm();
+                float Rnorm = 0.f;
+                for(int i = 0; i < n; i += 3) Rnorm += S.segment<3>(i+n).norm();
+                cout << "  R norm: " << Rnorm << endl;
+                // end condition 1: C is small --> may be converged
+                if(cond < tolerance) break;
+                // end condition 2: further decrease in R requires violating the constraints
+                if(cond > prevCond) { S = prevS; break; }
+                prevCond = cond;
+            }
+            construct_dCdS();
+            construct_dRdS();
+            construct_dRdS2();
+            
+            // Solve //
+            cg.compute(dRdS2.block(n, n, n, n));
+            VectorXf S_hat = VectorXf::Zero(dRdS.rows());
+            S_hat.segment<n>(n) += cg.solve(-dRdS.segment<n>(n));
+            cout << "  #iterations:     " << cg.iterations() << endl;
+            cout << "  estimated error: " << cg.error()      << endl;
+            lscg.compute(dCdS);
+            VectorXf C_modified = -C - dCdS*S_hat;
+            VectorXf S_tilde = lscg.solve(C_modified);
+            cout << "  #iterations:     " << lscg.iterations() << endl;
+            cout << "  estimated error: " << lscg.error()      << endl;
+            deltaS = S_hat+S_tilde;
+        }
+        else {
+            // Construct system //
+            construct_KKTLinearized();
+            {
+                // end condition should be checked after constructing C
+                cout << "  C norm: " << C.norm() << endl;
+                float cond = C.norm();
+                float Rnorm = 0.f;
+                for(int i = 0; i < n; i += 3) Rnorm += S.segment<3>(i+n).norm();
+                cout << "  R norm: " << Rnorm << endl;
+                // end condition 1: C is small --> may be converged
+                if(cond < tolerance) break;
+                // end condition 2: further decrease in R requires violating the constraints
+                if(cond > prevCond) { S = prevS; break; }
+                prevCond = cond;
+            }
+            
+            // Solve //
+            cout << "Try to solve" << endl;
+            lscg.compute(KKT);
+            auto d = lscg.solve(KKT_b);
+            cout << "  iteration: " << lscg.iterations() << endl;
+            cout << "  error: " << lscg.error() << endl;
+            l += d.segment(S.rows(), dCdS.rows());
+            deltaS = d.segment(0, S.rows());
+        }
+        prevS = S;
+        S += deltaS;
+        
+        if(deltaS.norm() < tolerance) break; // No more update?
+        
+        // Check the results //
+        for(size_t row = 0; row < S.rows(); row += 3) {
+            cout<<"  ("<<S.coeff(row)<<","<<S.coeff(row+1)<<","<<S.coeff(row+2)<<")"<<endl;
+        }
+    }
+    cout << "Stopped on cnt = " << cnt << ",  final result:" << endl;
+    
+}
 
 // Sequential Quadratic Programming
 //VectorXf SQP() {
-//    lscg.compute(KKT);
-//    auto d = lscg.solve(KKT_b);
-//    cout << "  iteration: " << lscg.iterations() << endl;
-//    cout << "  error: " << lscg.error() << endl;
-//    l += d.segment(S.rows(), dCdS.rows());
-//    return d.segment(0, S.rows());
+//    cg.compute(dRdS2.block(n, n, n, n));
+//    VectorXf S_hat = VectorXf::Zero(dRdS.rows());
+//    S_hat.segment<n>(n) += cg.solve(-dRdS.segment<n>(n));
+//    cout << "  #iterations:     " << cg.iterations() << endl;
+//    cout << "  estimated error: " << cg.error()      << endl;
+//    lscg.compute(dCdS);
+//    VectorXf C_modified = -C - dCdS*S_hat;
+//    VectorXf S_tilde = lscg.solve(C_modified);
+//    cout << "  #iterations:     " << lscg.iterations() << endl;
+//    cout << "  estimated error: " << lscg.error()      << endl;
+//    return S_hat+S_tilde;
 //}
-
-// Sequential Quadratic Programming
-VectorXf SQP() {
-    cg.compute(dRdS2.block(n, n, n, n));
-    VectorXf S_hat = VectorXf::Zero(dRdS.rows());
-    S_hat.segment<n>(n) += cg.solve(-dRdS.segment<n>(n));
-    cout << "  #iterations:     " << cg.iterations() << endl;
-    cout << "  estimated error: " << cg.error()      << endl;
-    lscg.compute(dCdS);
-    VectorXf C_modified = -C - dCdS*S_hat;
-    VectorXf S_tilde = lscg.solve(C_modified);
-    cout << "  #iterations:     " << lscg.iterations() << endl;
-    cout << "  estimated error: " << lscg.error()      << endl;
-    return S_hat+S_tilde;
-}
 
 bool renderLoop = false;
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -313,55 +395,8 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 }
 
 void init() {
-    // Zero Starting S
-    S = VectorXf::Zero(2*n);
+    SQP();
     
-    VectorXf prevS;
-    float tolerance = 1e-4, prevCond = numeric_limits<float>::max();
-    int cnt = 0, maxCnt = 100;
-    while(++cnt < maxCnt) { // small enough C or iterated enough, stop iteration
-        cout << cnt << "-th iteration:" << endl;
-        
-        
-        // Construct system //
-        construct_C();
-        {
-            // end condition should be checked after constructing C
-            cout << "C norm: " << C.norm() << endl;
-            float cond = C.norm();
-            // end condition 1: C is small --> may be converged
-            if(cond < tolerance) break;
-            // end condition 2: further decrease in R requires violating the constraints
-            if(cond > prevCond) { S = prevS; break; }
-            prevCond = cond;
-        }
-        construct_dCdS();
-        construct_dRdS();
-        construct_dRdS2();
-//        construct_KKTLinearized();
-//        {
-//            // end condition should be checked after constructing C
-//            cout << "C norm: " << C.norm() << endl;
-//            float cond = C.norm();
-//            // end condition 1: C is small --> may be converged
-//            if(cond < tolerance) break;
-//            // end condition 2: further decrease in R requires violating the constraints
-//            if(cond > prevCond) { S = prevS; break; }
-//            prevCond = cond;
-//        }
-
-        // Solve //
-        cout << "Try to solve" << endl;
-        VectorXf deltaS = SQP();
-        prevS = S;
-        S += deltaS;
-        
-        // Check the results //
-        for(size_t row = 0; row < S.rows(); row += 3) {
-            cout<<"  ("<<S.coeff(row)<<","<<S.coeff(row+1)<<","<<S.coeff(row+2)<<")"<<endl;
-        }
-    }
-    cout << "Stopped on cnt = " << cnt << ",  final result:" << endl;
     
     for(size_t row = 0; row < S.rows(); row += 3) {
         cout<<"  ("<<S.coeff(row)<<","<<S.coeff(row+1)<<","<<S.coeff(row+2)<<")"<<endl;
@@ -370,8 +405,19 @@ void init() {
     shader.loadShader("vs.vert", "fs.frag");
     
     vector<float> pos(n), vel(n);
+    float v = 0.f;
     for(int i = 0; i < n; i++) pos[i] = (S.coeff(i));
-    for(int i = 0; i < n; i++) vel[i] = (S.coeff(i+n) / m * h);
+    VectorXf gravity = VectorXf::Zero(n);
+    for(int i = 4; i < n-3; i+=3) gravity.coeffRef(i) = g;
+    VectorXf acc = S.segment<n>(n)/m + gravity;
+    cout << "v: " << endl;
+    for(int i = 0; i < n; i++) {
+        if(i % 3 == 0) cout << endl;
+        vel[i] = v;
+        v += acc.coeff(i)*h;
+        cout << v << ", ";
+    }
+    cout << endl;
     obj = ObjectFraming::create(T, pos, vel);
     
     glfwSetKeyCallback(window->getGLFWWindow(), keyCallback);

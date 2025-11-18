@@ -20,11 +20,12 @@ void main() {
     float t = interTime;
     vec4 tvec = vec4(t*t*t, t*t, t, 1);
 //    gl_Position = vec4(mix(currPos, nextPos, interTime), 1); // lineawr
-    vec4 pvx = vec4(currPos.x, nextPos.x, currVel.x, nextVel.x);
-    vec4 pvy = vec4(currPos.y, nextPos.y, currVel.y, nextVel.y);
-    vec4 pvz = vec4(currPos.z, nextPos.z, currVel.z, nextVel.z);
+    vec4 pvx = vec4(currPos.x, nextPos.x, currVel.x, -nextVel.x); // cubic hermit
+    vec4 pvy = vec4(currPos.y, nextPos.y, currVel.y, -nextVel.y);
+    vec4 pvz = vec4(currPos.z, nextPos.z, currVel.z, -nextVel.z);
     float px = dot(tvec, cubicHermit*pvx);
     float py = dot(tvec, cubicHermit*pvy);
     float pz = dot(tvec, cubicHermit*pvz);
-    gl_Position = vec4(px, py, pz, 1);
+    gl_Position = vec4(px, py, pz, 1); // cubic hermit
+//    gl_Position = vec4(currPos + (currVel+nextVel)/2.f*t, 1); // physics?
 }
