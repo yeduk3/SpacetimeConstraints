@@ -24,13 +24,13 @@ using namespace Eigen;
 //******************************
 
 // Time binning
-const float T = 5.f;
-const int N = 5;
-const float h = T/N;
+const float T = 2.f;
+const int NKeyFrame = 3;  // bin is -1
+const float h = T/(NKeyFrame-1);
 // mass(kg)
 const int m = 1;
 // Start position a and End position b
-Vector3f a(-0.5f, -0.5f, 0), b(0.5f, 0.5f, 0);
+Vector3f a(-0.5f, -0.5f, 0), b(0.5f, 0.5f, 0), c(0, 0.5, 0);
 
 // gravity acceleration
 const float g = -9.8f;
@@ -40,37 +40,53 @@ const float g = -9.8f;
 //***********************************
 
 struct KeyFrameAnimObj {
+private:
     float animatingTime; // 1 cycle time
     int numFrame; // total frame = position.size() / 3
+    int numFrameBin;
     vector<float> position; // vector of 3d vectors
     vector<float> velocity; // vector of 3d vectors
     GLuint vao = -1, posvbo[2], velvbo[2];
     int animatingFrame = -1;
+    
+    // For debugging
+    struct DebugObj {
+        GLuint debugVao = -1, debugVbo;
+        vector<float> points;
+        int nPts, nLines;
+    } debugObj;
+public:
     static KeyFrameAnimObj* create(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) { return new KeyFrameAnimObj(animatingTime_, position_, velocity_); }
     
     KeyFrameAnimObj(const float& animatingTime_, const vector<float>& position_, const vector<float>& velocity_) : animatingTime(animatingTime_), position(position_), velocity(velocity_) {
         numFrame = int(position_.size()) / 3;
-        
+        numFrameBin = (numFrame-1);
         cout << "--- Key Frame Animation Object ---" << endl;
         cout << "animating Time: " << animatingTime << endl;
-        cout << "numFrame:       " << numFrame << endl;
+        cout << "numFrame:       " << numFrame      << endl;
         
         cout << "----------------------------------" << endl;
     }
     void render(const float& t, bool loop = true) {
         int currFrame, nextFrame;
-        float tt = t/animatingTime;
-        float timeRatio = (tt - floor(tt))*numFrame;
+        float tt = t/animatingTime; // animated percentage over total animating time [0, 1), [1, 2), ...
+        float currentBin;
         if(loop) {
-            currFrame = int(timeRatio) % numFrame;
-            nextFrame = (currFrame + 1) % numFrame;
+            currentBin = (tt - floor(tt))*numFrameBin; // scaled by numFrame --> [0, numFrameBin]
+            currFrame = int(currentBin) % numFrameBin; // [0, numFrameBin)
+            nextFrame = (currFrame + 1); // [1, numFrameBin]
         } else {
-            currFrame = t > animatingTime ? numFrame-1 : int(timeRatio);
-            nextFrame = currFrame == numFrame-1 ? currFrame : currFrame+1;
+            currentBin = (tt)*numFrameBin; // scaled by numFrame --> [0, numFrameBin]
+            currFrame = int(currentBin);
+            if(currFrame >= numFrameBin) {
+                currFrame = numFrameBin;
+                nextFrame = numFrameBin;
+                currentBin = numFrameBin;
+            } else nextFrame = currFrame+1;
         }
         
         shader.use();
-        shader.setUniform("interTime", min(1.f, max(0.f, timeRatio - currFrame)));
+        shader.setUniform("interTime", min(1.f, max(0.f, currentBin - currFrame))); // [0, ?
         
         if(vao == -1) {
             vector<float> currpos(position.begin(),   position.begin()+3);
@@ -91,7 +107,7 @@ struct KeyFrameAnimObj {
         }
         
         if(animatingFrame != currFrame) {
-//            cout << "Frame: " << curFrame << ", " << nextFrame << endl;
+            cout << "Frame: " << currFrame << ", " << nextFrame << endl;
             animatingFrame = currFrame;
             vector<float> currpos(position.begin()+currFrame*3, position.begin()+currFrame*3+3);
             vector<float> nextpos(position.begin()+nextFrame*3, position.begin()+nextFrame*3+3);
@@ -122,8 +138,53 @@ struct KeyFrameAnimObj {
         glDrawArrays(GL_POINTS, 0, 1);
     }
     
-    void debugRender() {
+    void setDebugObj(const vector<float>& points_, const vector<float>& lines_) {
+        debugObj.points = points_;
+        debugObj.points.insert(debugObj.points.end(), lines_.begin(), lines_.end());
+        debugObj.nPts = int(points_.size()) / 3;
+        debugObj.nLines = int(lines_.size()) / 3;
+    }
+    
+    void debugRender(const float& t, bool loop = true) {
+        int currFrame, nextFrame;
+        float tt = t/animatingTime; // animated percentage over total animating time [0, 1), [1, 2), ...
+        float currentBin;
+        if(loop) {
+            currentBin = (tt - floor(tt))*numFrameBin; // scaled by numFrame --> [0, numFrameBin]
+            currFrame = int(currentBin) % numFrameBin; // [0, numFrameBin)
+            nextFrame = (currFrame + 1); // [1, numFrameBin]
+        } else {
+            currentBin = (tt)*numFrameBin; // scaled by numFrame --> [0, numFrameBin]
+            currFrame = int(currentBin);
+            if(currFrame >= numFrameBin) {
+                currFrame = numFrameBin;
+                nextFrame = numFrameBin;
+                currentBin = numFrameBin;
+            } else nextFrame = currFrame+1;
+        }
         
+        if(debugObj.debugVao == -1) {
+            glGenVertexArrays(1, &(debugObj.debugVao));
+            glBindVertexArray(debugObj.debugVao);
+            glGenBuffers(1, &(debugObj.debugVbo));
+            glBindBuffer(GL_ARRAY_BUFFER, debugObj.debugVbo);
+            glBufferData(GL_ARRAY_BUFFER, debugObj.points.size() * sizeof(float), debugObj.points.data(), GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), 0);
+        }
+        glBindVertexArray(debugObj.debugVao);
+        
+        shader.use();
+        shader.setUniform("debug", 1);
+        
+        shader.setUniform("debugColor", glm::vec3(0, 1, 0));
+        glPointSize(20);
+//        glDrawArrays(GL_POINTS, 0, debugObj.nPts);
+        glDrawArrays(GL_POINTS, currFrame, 2);
+        shader.setUniform("debugColor", glm::vec3(0, 0, 1));
+        glDrawArrays(GL_LINES, debugObj.nPts+currFrame*2, 4);
+        
+        shader.setUniform("debug", 0);
     }
 };
 KeyFrameAnimObj *obj;
@@ -155,7 +216,9 @@ SparseMatrix<float> dCdS;
 VectorXf dRdS;
 SparseMatrix<float> dRdS2;
 
-const int n = N*3; // number of elements of x_1 to x_n
+
+const int n = NKeyFrame*3;
+const int systemSize = n+6; // number of elements of x_1 to x_n. +6 for the ghost two side points(x_1 and x_n)
 
 using TriList = vector<Triplet<float>>;
 
@@ -170,21 +233,21 @@ void put33DiagToTriList(TriList& triplets, int row, int col, float v) {
 }
 
 void construct_C() {
-    C = VectorXf::Zero(n+9);
+    C = VectorXf::Zero(systemSize+9);
     // v_1: x_2 - x_1 = 0
     C.segment<3>(0) = S.segment<3>(3) - S.segment<3>(0);
     // c_a: x_1 - a = 0
     C.segment<3>(3) = S.segment<3>(0) - a;
     // p_i: m*(x_{i-1} - 2*x_i + x_{i+1})/h^2 - f_i - mg
-    VectorXf gravity = VectorXf::Zero(n-6);
+    VectorXf gravity = VectorXf::Zero(systemSize-6);
     for(int i = 1; i < gravity.rows(); i += 3) gravity.coeffRef(i) = m*g;
-    C.segment<n-6>(6) = m*( S.segment<n-6>(0) - 2*S.segment<n-6>(3) + S.segment<n-6>(6) )/(h*h) - S.segment<n-6>(n+3) - gravity;
+    C.segment<systemSize-6>(6) = m*( S.segment<systemSize-6>(0) - 2*S.segment<systemSize-6>(3) + S.segment<systemSize-6>(6) )/(h*h) - S.segment<systemSize-6>(systemSize+3) - gravity;
     // c_b: x_n - b = 0
-    C.segment<3>(n) = S.segment<3>(n-3) - b;
+    C.segment<3>(systemSize) = S.segment<3>(systemSize-3) - b;
     // v_n: x_n - x_{n-1} = 0
-    C.segment<3>(n+3) = S.segment<3>(n-3) - S.segment<3>(n-6);
+    C.segment<3>(systemSize+3) = S.segment<3>(systemSize-3) - S.segment<3>(systemSize-6);
     // test additional
-    C.segment<3>(n+6) = S.segment<3>(6) - Vector3f(0, 0.5, 0);
+    C.segment<3>(systemSize+6) = S.segment<3>(6) - c;
 
     cout << "C(" <<  C.rows() << ", " << C.cols() << ")" << endl;
 }
@@ -200,20 +263,20 @@ TriList construct_dCdS() {
     put33DiagToTriList(triplets, 3, 0, 1);
     // d(p_i)/d(x_j)
     float lr = -m/(h*h), me = 2*m/(h*h);
-    for(int i = 6; i < n; i += 3) {
+    for(int i = 6; i < systemSize; i += 3) {
         put33DiagToTriList(triplets, i, i-6, lr);
         put33DiagToTriList(triplets, i, i-3, me);
         put33DiagToTriList(triplets, i, i  , lr);
     }
     // d(c_b)/d(x_n)
-    put33DiagToTriList(triplets, n, n-3, 1);
+    put33DiagToTriList(triplets, systemSize, systemSize-3, 1);
     // d(v_n)/d(x_{n-1}) = -1, d(v_n)/d(x_n) = 1
-    put33DiagToTriList(triplets, n+3, n-6, -1); put33DiagToTriList(triplets, n+3, n-3, 1);
+    put33DiagToTriList(triplets, systemSize+3, systemSize-6, -1); put33DiagToTriList(triplets, systemSize+3, systemSize-3, 1);
     // d(p_i)/d(f_j)
-    for(int i = 6; i < n; i += 3) {
-        put33DiagToTriList(triplets, i, i+n-3, -1);
+    for(int i = 6; i < systemSize; i += 3) {
+        put33DiagToTriList(triplets, i, i+systemSize-3, -1);
     }
-    put33DiagToTriList(triplets, n+6, 6, 1);
+    put33DiagToTriList(triplets, systemSize+6, 6, 1);
     
     dCdS.setFromTriplets(triplets.begin(), triplets.end());
     
@@ -223,24 +286,24 @@ TriList construct_dCdS() {
 }
 
 void construct_dRdS() {
-    dRdS = VectorXf::Zero(2*n);
+    dRdS = VectorXf::Zero(2*systemSize);
     
     // dRdx = 0?
     // dRdf = 2hf_i
-    dRdS.segment<n>(n) = S.segment<n>(n)*2*h;
+    dRdS.segment<systemSize>(systemSize) = S.segment<systemSize>(systemSize)*2*h;
     
     cout << "dRdS(" <<  dRdS.rows() << ", " << dRdS.cols() << ")" << endl;
 }
 
 TriList construct_dRdS2() {
-    dRdS2 = SparseMatrix<float>(2*n, 2*n);
+    dRdS2 = SparseMatrix<float>(2*systemSize, 2*systemSize);
     TriList triplets;
     
     // d(R)/(d(x)d(x)) = 0?
     // d(R)/(d(x)d(f)) = 0?
     // d(R)/(d(f)d(f)) = 2h
 //    float h2 = 2*h;
-    for(int i = n; i < 2*n; i += 3) {
+    for(int i = systemSize; i < 2*systemSize; i += 3) {
         put33DiagToTriList(triplets, i, i, 2*h);
     }
     
@@ -289,7 +352,7 @@ void construct_KKTLinearized() {
 // Sequential Quadratic Programming
 void SQP(bool useKKT = false) {
     // Zero Starting S
-    S = VectorXf::Zero(2*n);
+    S = VectorXf::Zero(2*systemSize);
     
     VectorXf prevS;
     float tolerance = 1e-4, prevCond = numeric_limits<float>::max();
@@ -307,7 +370,7 @@ void SQP(bool useKKT = false) {
                 cout << "  C norm: " << C.norm() << endl;
                 float cond = C.norm();
                 float Rnorm = 0.f;
-                for(int i = 0; i < n; i += 3) Rnorm += S.segment<3>(i+n).norm();
+                for(int i = 0; i < systemSize; i += 3) Rnorm += S.segment<3>(i+systemSize).norm();
                 cout << "  R norm: " << Rnorm << endl;
                 // end condition 1: C is small --> may be converged
                 if(cond < tolerance) break;
@@ -320,9 +383,9 @@ void SQP(bool useKKT = false) {
             construct_dRdS2();
             
             // Solve //
-            cg.compute(dRdS2.block(n, n, n, n));
+            cg.compute(dRdS2.block(systemSize, systemSize, systemSize, systemSize));
             VectorXf S_hat = VectorXf::Zero(dRdS.rows());
-            S_hat.segment<n>(n) += cg.solve(-dRdS.segment<n>(n));
+            S_hat.segment<systemSize>(systemSize) += cg.solve(-dRdS.segment<systemSize>(systemSize));
             cout << "  #iterations:     " << cg.iterations() << endl;
             cout << "  estimated error: " << cg.error()      << endl;
             lscg.compute(dCdS);
@@ -340,7 +403,7 @@ void SQP(bool useKKT = false) {
                 cout << "  C norm: " << C.norm() << endl;
                 float cond = C.norm();
                 float Rnorm = 0.f;
-                for(int i = 0; i < n; i += 3) Rnorm += S.segment<3>(i+n).norm();
+                for(int i = 0; i < systemSize; i += 3) Rnorm += S.segment<3>(i+systemSize).norm();
                 cout << "  R norm: " << Rnorm << endl;
                 // end condition 1: C is small --> may be converged
                 if(cond < tolerance) break;
@@ -379,6 +442,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
     else if(key == GLFW_KEY_R && action == GLFW_PRESS) {
         renderLoop = !renderLoop;
+        cout << "RenderLoop: " << renderLoop <<endl;
     }
 }
 
@@ -393,20 +457,35 @@ void init() {
     shader.loadShader("vs.vert", "fs.frag");
     
     vector<float> pos(n), vel(n);
-    float v = 0.f;
-    for(int i = 0; i < n; i++) pos[i] = (S.coeff(i));
+    Vector3f v(0, 0, 0);
+    for(int i = 0; i < n; i++) pos[i] = (S.coeff(i+3));
     VectorXf gravity = VectorXf::Zero(n);
-    for(int i = 4; i < n-3; i+=3) gravity.coeffRef(i) = g;
-    VectorXf acc = S.segment<n>(n)/m + gravity;
+    for(int i = 1; i < n; i+=3) gravity.coeffRef(i) = g;
+    VectorXf acc = S.segment<n>(systemSize+3)/m + gravity;
     cout << "v: " << endl;
-    for(int i = 0; i < n; i++) {
-        if(i % 3 == 0) cout << endl;
-        vel[i] = v;
-        v += acc.coeff(i)*h;
-        cout << v << ", ";
+    for(int i = 0; i < n; i+=3) {
+        vel[i] = v.x(); vel[i+1] = v.y(); vel[i+2] = v.z();
+        v += acc.segment<3>(i)*h;
+        cout << v << endl;
     }
-    cout << endl;
     obj = KeyFrameAnimObj::create(T, pos, vel);
+    vector<float> dPoints, dLines;
+    for(int i = 0; i < n; i+=3) {
+        // Point
+        dPoints.push_back(pos[i]);
+        dPoints.push_back(pos[i+1]);
+        dPoints.push_back(pos[i+2]);
+        
+        // Line start point
+        dLines.push_back(pos[i]);
+        dLines.push_back(pos[i+1]);
+        dLines.push_back(pos[i+2]);
+        // Line end point
+        dLines.push_back(pos[i] + vel[i]);
+        dLines.push_back(pos[i+1] + vel[i+1]);
+        dLines.push_back(pos[i+2] + vel[i+2]);
+    }
+    obj->setDebugObj(dPoints, dLines);
     
     glfwSetKeyCallback(window->getGLFWWindow(), keyCallback);
 }
@@ -416,8 +495,10 @@ void render() {
     glViewport(0, 0, window->width(), window->height());
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
+    
     t = glfwGetTime();
     obj->render(t, renderLoop);
+    obj->debugRender(t, renderLoop);
 }
 
 int main(int argc, const char * argv[]) {
