@@ -25,12 +25,12 @@ using namespace Eigen;
 
 // Time binning
 const float T = 2.f;
-const int NKeyFrame = 3;  // bin is -1
+const int NKeyFrame = 4;  // bin is -1
 const float h = T/(NKeyFrame-1);
 // mass(kg)
 const int m = 1;
 // Start position a and End position b
-Vector3f a(-0.5f, -0.5f, 0), b(0.5f, 0.5f, 0), c(0, 0.5, 0);
+Vector3f a(-0.7f, 0.5f, 0), b(-0.5f, -0.5f, 0), c(0.3f, 0.5f, 0), d(0.5f, -0.5f, 0);
 
 // gravity acceleration
 const float g = -9.8f;
@@ -182,6 +182,7 @@ public:
 //        glDrawArrays(GL_POINTS, 0, debugObj.nPts);
         glDrawArrays(GL_POINTS, currFrame, 2);
         shader.setUniform("debugColor", glm::vec3(0, 0, 1));
+//        glDrawArrays(GL_LINES, debugObj.nPts, debugObj.nLines);
         glDrawArrays(GL_LINES, debugObj.nPts+currFrame*2, 4);
         
         shader.setUniform("debug", 0);
@@ -233,7 +234,7 @@ void put33DiagToTriList(TriList& triplets, int row, int col, float v) {
 }
 
 void construct_C() {
-    C = VectorXf::Zero(systemSize+9);
+    C = VectorXf::Zero(systemSize+12);
     // v_1: x_2 - x_1 = 0
     C.segment<3>(0) = S.segment<3>(3) - S.segment<3>(0);
     // c_a: x_1 - a = 0
@@ -243,11 +244,12 @@ void construct_C() {
     for(int i = 1; i < gravity.rows(); i += 3) gravity.coeffRef(i) = m*g;
     C.segment<systemSize-6>(6) = m*( S.segment<systemSize-6>(0) - 2*S.segment<systemSize-6>(3) + S.segment<systemSize-6>(6) )/(h*h) - S.segment<systemSize-6>(systemSize+3) - gravity;
     // c_b: x_n - b = 0
-    C.segment<3>(systemSize) = S.segment<3>(systemSize-3) - b;
+    C.segment<3>(systemSize) = S.segment<3>(systemSize-3) - d;
     // v_n: x_n - x_{n-1} = 0
     C.segment<3>(systemSize+3) = S.segment<3>(systemSize-3) - S.segment<3>(systemSize-6);
     // test additional
-    C.segment<3>(systemSize+6) = S.segment<3>(6) - c;
+    C.segment<3>(systemSize+6) = S.segment<3>(6) - b;
+    C.segment<3>(systemSize+9) = S.segment<3>(9) - c;
 
     cout << "C(" <<  C.rows() << ", " << C.cols() << ")" << endl;
 }
@@ -277,6 +279,7 @@ TriList construct_dCdS() {
         put33DiagToTriList(triplets, i, i+systemSize-3, -1);
     }
     put33DiagToTriList(triplets, systemSize+6, 6, 1);
+    put33DiagToTriList(triplets, systemSize+9, 9, 1);
     
     dCdS.setFromTriplets(triplets.begin(), triplets.end());
     
