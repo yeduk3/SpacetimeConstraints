@@ -13,8 +13,10 @@
 
 ![Result_Sample](https://github.com/yeduk3/SpacetimeConstraints/blob/main/spacetime_constraints_simple_fast_optimized.gif)
 
+This simple example is generated to pass the green points under the gravity.
+                 
 - Red dot: Simple animated particle
 
-- Green dot: Constraints(Debugging) points
+- Green dots: Constraints(Debugging) points
 
-## References
+Each green dot is applied as a constraint on a specific key frame.
