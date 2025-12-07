@@ -44,6 +44,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		555CE4592EE5DC0800515492 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		555CE45A2EE5DEEC00515492 /* spacetime_constraints_simple_fast_optimized.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = spacetime_constraints_simple_fast_optimized.gif; sourceTree = "<group>"; };
 		557969C52EB74B13002963DA /* SpacetimeConstraints */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = SpacetimeConstraints; sourceTree = BUILT_PRODUCTS_DIR; };
 		557969E12EB74B49002963DA /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		557969EA2EB74CC1002963DA /* libglfw.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.4.dylib; path = ../../../YGL/lib/libglfw.3.4.dylib; sourceTree = "<group>"; };
@@ -70,6 +72,8 @@
 		557969BC2EB74B13002963DA = {
 			isa = PBXGroup;
 			children = (
+				555CE45A2EE5DEEC00515492 /* spacetime_constraints_simple_fast_optimized.gif */,
+				555CE4592EE5DC0800515492 /* README.md */,
 				557F889A2EC9B02A00DE4978 /* SpacetimeConstraints */,
 				557969D92EB74B41002963DA /* Frameworks */,
 				557969C62EB74B13002963DA /* Products */,
